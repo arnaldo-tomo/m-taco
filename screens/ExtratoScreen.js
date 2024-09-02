@@ -47,7 +47,8 @@ const ExtratoScreen = () => {
     async function fetchCategories () {
       try {
         const response = await axios.get(
-          'http://192.168.45.104:2000/api/categories'
+'https://apimytaco.networkmoz.com/api/categories'
+
         )
         setCategories(response.data)
       } catch (error) {
@@ -62,7 +63,7 @@ const ExtratoScreen = () => {
       try {
         const userId = await AsyncStorage.getItem('userId')
         const response = await axios.get(
-          'http://192.168.45.104:2000/api/filtered-transactions',
+          'https://apimytaco.networkmoz.com/api/filtered-transactions',
           {
             params: {
               user_id: userId,
