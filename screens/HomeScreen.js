@@ -87,7 +87,8 @@ export default function HomeScreen ({ navigation }) {
     const fetchCategories = async () => {
       try {
         const response = await axios.get(
-          'http://192.168.45.104:2000/api/categories'
+'https://apimytaco.networkmoz.com/api/categories'
+
         )
         const formattedItems = response.data.map(category => ({
           label: category.name,
@@ -106,7 +107,7 @@ export default function HomeScreen ({ navigation }) {
       try {
         const userId = await AsyncStorage.getItem('userId')
         const response = await axios.get(
-          'http://192.168.45.104:2000/api/transacoes',
+          'https://apimytaco.networkmoz.com/api/transacoes',
           {
             params: {
               user_id: userId
@@ -123,7 +124,7 @@ export default function HomeScreen ({ navigation }) {
       const userId = await AsyncStorage.getItem('userId')
       try {
         const response = await axios.get(
-          'http://192.168.45.104:2000/api/monthly-summary',
+          'https://apimytaco.networkmoz.com/api/monthly-summary',
           {
             params: { user_id: userId }
           }
@@ -150,7 +151,7 @@ export default function HomeScreen ({ navigation }) {
 
       // Enviar os dados para a API
       const response = await axios.post(
-        'http://192.168.45.104:2000/api/entries',
+        'https://apimytaco.networkmoz.com/api/entries',
         formData
       )
 
@@ -196,7 +197,7 @@ export default function HomeScreen ({ navigation }) {
       }
 
       const response = await axios.post(
-        'http://192.168.45.104:2000/api/expenses',
+        'https://apimytaco.networkmoz.com/api/expenses',
         payload
       )
 
