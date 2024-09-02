@@ -1,1 +1,3 @@
-<img src="Simulator Screenshot - iPhone 15 Pro Max - 2024-09-02 at 20.53.20.png" width="160">  <img src="Simulator Screenshot - iPhone 15 Pro Max - 2024-09-02 at 20.53.28.png" width="160">  <img src="Screenshot/Screenshot_20231113-161256_Animal.jpg" width="160">
+<img src="Simulator Screenshot - iPhone 15 Pro Max - 2024-09-02 at 20.53.20.png" width="160">  <img src="Simulator Screenshot - iPhone 15 Pro Max - 2024-09-02 at 20.53.28.png" width="160">  <img src="Simulator Screenshot - iPhone 15 Pro Max - 2024-09-02 at 20.53.31.png" width="160">
+
+ <img src="Simulator Screenshot - iPhone 15 Pro Max - 2024-09-02 at 20.53.37.png" width="160">
