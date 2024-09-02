@@ -39,7 +39,7 @@ export default function Auth_login () {
   const handleLogin = async (values, { setSubmitting, setErrors }) => {
     try {
       const response = await axios.post(
-        'http://192.168.45.104:2000/api/login',
+        'https://apimytaco.networkmoz.com/api/login',
         {
           email: values.email,
           password: values.password
@@ -64,7 +64,7 @@ export default function Auth_login () {
     <View style={{ flex: 1 }}>
       <StatusBar style='light' animated={true} translucent={true} />
       <ImageBackground
-        source={require('../assets/bg1.png')}
+        source={require('../assets/bg.png')}
         style={{
           flex: 1,
           width: width,
