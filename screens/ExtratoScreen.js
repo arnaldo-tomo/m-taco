@@ -1,450 +1,394 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState } from "react";
 import {
   View,
   Text,
   ScrollView,
-  Image,
   TouchableOpacity,
   ImageBackground
-} from 'react-native'
-import { BlurView } from 'expo-blur'
-import { useNavigation } from '@react-navigation/native'
-import { Picker } from '@react-native-picker/picker'
-import axios from 'axios'
-import AsyncStorage from '@react-native-async-storage/async-storage'
-import Ionicons from '@expo/vector-icons/Ionicons'
-import { format } from 'date-fns'
-import { ptBR } from 'date-fns/locale'
-import DropDownPicker from 'react-native-dropdown-picker'
-const ExtratoScreen = () => {
-  const navigation = useNavigation()
+} from "react-native";
+import { BlurView } from "expo-blur";
+import axios from "axios";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
+import Ionicons from "@expo/vector-icons/Ionicons";
+import { API_UEL } from "../config/app";
 
-  const [transactions, setTransactions] = useState([])
-  const [selectedCategory, setSelectedCategory] = useState('Todas')
-  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1)
-  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear())
-  const [categories, setCategories] = useState([])
-  const [totalAcumulado, setTotalAcumulado] = useState(0)
-  const [viewType, setViewType] = useState('tudo')
-  const [userName, setUserName] = useState(null)
-  const [currentMonth, setCurrentMonth] = useState('')
-  useEffect(() => {
-    const month = format(new Date(), 'MMMM', { locale: ptBR })
-    setCurrentMonth(month.charAt(0).toUpperCase() + month.slice(1))
-    const fetchUserData = async () => {
-      try {
-        const storedUserId = await AsyncStorage.getItem('userId')
-        const storedUserName = await AsyncStorage.getItem('userName')
-
-        if (storedUserId !== null && storedUserName !== null) {
-          setUserId(storedUserId)
-          setUserName(storedUserName)
-        }
-      } catch (error) {
-        console.error('Erro ao buscar dados do usuário:', error)
-      }
-    }
-    async function fetchCategories () {
-      try {
-        const response = await axios.get(
-'https://apimytaco.networkmoz.com/api/categories'
-
-        )
-        setCategories(response.data)
-      } catch (error) {
-        console.error('Erro ao buscar categorias:', error)
-      }
-    }
-    fetchCategories()
-  }, [])
+const ExtratoScreen = ({ navigation }) => {
+  const [viewType, setViewType] = useState("tudo");
+  const [transactions, setTransactions] = useState([]);
+  const [categories, setCategories] = useState([]);
+  const [filteredTransactions, setFilteredTransactions] = useState({});
+  const [entries, setEntries] = useState({}); // Agrupar entradas por ano/mês
 
   useEffect(() => {
-    async function fetchTransactions () {
+    const fetchCategories = async () => {
       try {
-        const userId = await AsyncStorage.getItem('userId')
-        const response = await axios.get(
-          'https://apimytaco.networkmoz.com/api/filtered-transactions',
-          {
-            params: {
-              user_id: userId,
-              month: selectedMonth,
-              year: selectedYear,
-              category: selectedCategory !== 'Todas' ? selectedCategory : null
-            }
+        const response = await axios.get(`${API_UEL}/categories`);
+        setCategories(response.data);
+      } catch (error) {
+        console.error("Erro ao buscar categorias:", error);
+      }
+    };
+
+    const fetchTransactions = async () => {
+      try {
+        const userId = await AsyncStorage.getItem("userId");
+        const response = await axios.get(`${API_UEL}/transacoes`, {
+          params: { user_id: userId }
+        });
+        setTransactions(response.data);
+      } catch (error) {
+        console.error("Erro ao buscar transações:", error);
+      }
+    };
+
+    fetchCategories();
+    fetchTransactions();
+  }, []);
+
+  useEffect(
+    () => {
+      if (viewType === "entradas") {
+        // Carregar entradas da API quando "Entradas" for selecionado
+        const fetchEntries = async () => {
+          try {
+            const userId = await AsyncStorage.getItem("userId");
+            const response = await axios.get(
+              `${API_UEL}/entries/current-month`,
+              {
+                params: { user_id: userId }
+              }
+            );
+
+            // Agrupar entradas por ano e mês
+            const entriesByYear = response.data.reduce((accYear, entry) => {
+              const entryDate = new Date(entry.entry_date);
+              const year = entryDate.getFullYear();
+              const month = entryDate.getMonth();
+
+              if (!accYear[year]) {
+                accYear[year] = {};
+              }
+
+              if (!accYear[year][month]) {
+                accYear[year][month] = {
+                  total: 0,
+                  entradas: []
+                };
+              }
+
+              accYear[year][month].total += parseFloat(entry.amount);
+              accYear[year][month].entradas.push(entry);
+
+              return accYear;
+            }, {});
+
+            setEntries(entriesByYear); // Armazena as entradas agrupadas
+          } catch (error) {
+            console.error("Erro ao buscar entradas:", error);
           }
-        )
-        const filteredTransactions = response.data.filter(transaction => {
-          if (viewType === 'tudo') return true
-          if (viewType === 'entradas' && transaction.type === 'entrada')
-            return true
-          if (viewType === 'despesas' && transaction.type === 'gasto')
-            return true
-          return false
-        })
+        };
 
-        setTransactions(filteredTransactions)
+        fetchEntries();
+      } else {
+        // Filtro para transações e categorias
+        const filterTransactionsByCategory = () => {
+          const categorizedTransactions = categories.reduce((acc, category) => {
+            const categoryTransactions = transactions.filter(
+              transaction => transaction.category_id === category.id
+            );
 
-        const total = filteredTransactions.reduce(
-          (acc, transaction) => acc + parseFloat(transaction.amount),
-          0
-        )
-        setTotalAcumulado(total)
-      } catch (error) {
-        console.error('Erro ao buscar transações:', error)
+            // Agrupamento por anos e meses
+            if (categoryTransactions.length > 0) {
+              const transactionsByYear = categoryTransactions.reduce(
+                (accYear, transaction) => {
+                  const transactionDate = new Date(transaction.expense_date);
+                  const year = transactionDate.getFullYear();
+                  const month = transactionDate.getMonth();
+
+                  if (!accYear[year]) {
+                    accYear[year] = {};
+                  }
+
+                  if (!accYear[year][month]) {
+                    accYear[year][month] = {
+                      total: 0,
+                      transacoes: []
+                    };
+                  }
+
+                  accYear[year][month].total += parseFloat(transaction.amount);
+                  accYear[year][month].transacoes.push(transaction);
+
+                  return accYear;
+                },
+                {}
+              );
+
+              acc[category.name] = transactionsByYear;
+            }
+
+            return acc;
+          }, {});
+
+          setFilteredTransactions(categorizedTransactions);
+        };
+
+        filterTransactionsByCategory();
       }
-    }
-    fetchTransactions()
-  }, [selectedCategory, selectedMonth, selectedYear, viewType])
+    },
+    [viewType, transactions, categories]
+  );
 
   const formatCurrency = value => {
-    return new Intl.NumberFormat('pt-MZ', {
-      style: 'currency',
-      currency: 'MZN'
-    }).format(value)
-  }
+    return new Intl.NumberFormat("pt-MZ", {
+      style: "currency",
+      currency: "MZN"
+    }).format(value);
+  };
 
-  // const FilterSection = () => (
-  //   <BlurView
-  //     intensity={90}
-  //     tint='dark'
-  //     style={{
-  //       padding: 10,
-  //       borderRadius: 16,
-  //       overflow: 'hidden',
-  //       marginBottom: 20
-  //     }}
-  //   >
-  //     <Text
-  //       style={{
-  //         color: 'white',
-  //         marginBottom: 5,
-  //         fontSize: 16,
-  //         fontWeight: 'bold'
-  //       }}
-  //     >
-  //       Filtrar por:
-  //     </Text>
+  // Função para renderizar as entradas agrupadas por ano e mês
+  const renderEntries = () => {
+    return Object.keys(entries).map((year, yearIndex) =>
+      <View key={yearIndex} style={{ marginBottom: 20 }}>
+        <Text style={{ color: "white", fontWeight: "bold", fontSize: 17 }}>
+          {year} {/* Exibe o ano */}
+        </Text>
 
-  //     <View
-  //       style={{
-  //         flexDirection: 'row',
-  //         justifyContent: 'space-between',
-  //         alignItems: 'center'
-  //       }}
-  //     >
-  //       {/* Filtro por Categoria */}
-  //       <View
-  //         style={{
-  //           flexDirection: 'column',
-  //           flex: 1,
-  //           marginRight: 5
-  //         }}
-  //       >
-  //         <View
-  //           style={{
-  //             flexDirection: 'row',
-  //             alignItems: 'center',
-  //             borderRadius: 10,
-  //             paddingHorizontal: 10
-  //           }}
-  //         >
-  //           <Ionicons name='filter-outline' size={20} color='white' />
-  //           <Picker
-  //             selectedValue={selectedCategory}
-  //             style={{
-  //               width: '100%',
-  //               color: 'white',
-  //               backgroundColor: 'transparent',
-  //               marginLeft: -10
-  //             }}
-  //             onValueChange={itemValue => setSelectedCategory(itemValue)}
-  //             dropdownIconColor='transparent'
-  //           >
-  //             <Picker.Item label='Todas Categorias' value='Todas' />
-  //             {categories.map(category => (
-  //               <Picker.Item
-  //                 key={category.id}
-  //                 label={category.name}
-  //                 value={category.name}
-  //               />
-  //             ))}
-  //           </Picker>
-  //         </View>
-  //         <Text style={{ color: 'white', textAlign: 'center' }}>
-  //           {selectedCategory !== 'Todas'
-  //             ? `Categoria: ${selectedCategory}`
-  //             : 'Todas Categorias'}
-  //         </Text>
-  //       </View>
+        {/* Exibir entradas agrupadas por mês */}
+        {Object.keys(entries[year]).map((month, monthIndex) =>
+          <View key={monthIndex} style={{ marginBottom: 10 }}>
+            <Text
+              style={{
+                color: "white",
+                fontWeight: "bold",
+                fontSize: 15,
+                marginTop: 10,
+                marginHorizontal: 5
+              }}
+            >
+              {/* Exibe o nome do mês e o total de entradas do mês */}
+              {format(new Date(year, month), "MMMM", { locale: ptBR })} - Total:{" "}
+              {formatCurrency(entries[year][month].total)}
+            </Text>
 
-  //       {/* Filtro por Mês */}
-  //       <View
-  //         style={{
-  //           flexDirection: 'column',
-  //           flex: 0.8,
-  //           marginHorizontal: 5
-  //         }}
-  //       >
-  //         <View
-  //           style={{
-  //             flexDirection: 'row',
-  //             alignItems: 'center',
-  //             borderRadius: 10,
-  //             paddingHorizontal: 10
-  //           }}
-  //         >
-  //           <Ionicons name='calendar-outline' size={20} color='white' />
-  //           <Picker
-  //             selectedValue={selectedMonth}
-  //             style={{
-  //               width: '100%',
-  //               color: 'white',
-  //               backgroundColor: 'transparent',
-  //               marginLeft: -10
-  //             }}
-  //             onValueChange={itemValue => setSelectedMonth(itemValue)}
-  //             dropdownIconColor='transparent'
-  //           >
-  //             {Array.from({ length: 12 }, (_, i) => i + 1).map(month => (
-  //               <Picker.Item
-  //                 key={month}
-  //                 label={new Date(0, month - 1).toLocaleString('pt-BR', {
-  //                   month: 'long'
-  //                 })}
-  //                 value={month}
-  //               />
-  //             ))}
-  //           </Picker>
-  //         </View>
-  //         <Text style={{ color: 'white', textAlign: 'center' }}>
-  //           {new Date(0, selectedMonth - 1).toLocaleString('pt-BR', {
-  //             month: 'long'
-  //           })}
-  //         </Text>
-  //       </View>
+            {/* Exibindo as entradas do mês */}
+            {entries[year][month].entradas.map((entry, i) =>
+              <BlurView
+                key={entry.id}
+                intensity={90}
+                tint="dark"
+                style={{
+                  padding: 10,
+                  borderRadius: 16,
+                  overflow: "hidden",
+                  marginTop: 5
+                }}
+              >
+                <View
+                  style={{
+                    flexDirection: "row",
+                    justifyContent: "space-between",
+                    alignItems: "center"
+                  }}
+                >
+                  <Text
+                    style={{ color: "white", fontWeight: "bold", fontSize: 16 }}
+                  >
+                    {formatCurrency(entry.amount)}
+                  </Text>
+                  <Text style={{ color: "white", fontSize: 14 }}>
+                    {entry.entry_date}
+                  </Text>
+                  <Text style={{ color: "white", fontSize: 12 }}>
+                    {entry.origim}
+                  </Text>
+                </View>
+              </BlurView>
+            )}
+          </View>
+        )}
+      </View>
+    );
+  };
 
-  //       {/* Filtro por Ano */}
-  //       <View
-  //         style={{
-  //           flexDirection: 'column',
-  //           flex: 0.8,
-  //           marginLeft: 5
-  //         }}
-  //       >
-  //         <View
-  //           style={{
-  //             flexDirection: 'row',
-  //             alignItems: 'center',
-  //             borderRadius: 10,
-  //             paddingHorizontal: 10
-  //           }}
-  //         >
-  //           <Ionicons name='time-outline' size={20} color='white' />
-  //           <Picker
-  //             selectedValue={selectedYear}
-  //             style={{
-  //               width: '100%',
-  //               color: 'white',
-  //               backgroundColor: 'transparent',
-  //               marginLeft: -10
-  //             }}
-  //             onValueChange={itemValue => setSelectedYear(itemValue)}
-  //             dropdownIconColor='transparent'
-  //           >
-  //             {Array.from(
-  //               { length: new Date().getFullYear() - 2010 + 1 },
-  //               (_, i) => 2010 + i
-  //             ).map(year => (
-  //               <Picker.Item key={year} label={year.toString()} value={year} />
-  //             ))}
-  //           </Picker>
-  //         </View>
-  //         <Text style={{ color: 'white', textAlign: 'center' }}>
-  //           Ano: {selectedYear}
-  //         </Text>
-  //       </View>
-  //     </View>
-  //   </BlurView>
-  // )
+  const renderTransactionsByCategory = () => {
+    return Object.keys(filteredTransactions).map((categoria, index) =>
+      <View key={index} style={{ marginBottom: 20 }}>
+        {/* Exibindo o nome da categoria */}
+        <Text
+          style={{
+            color: "white",
+            fontWeight: "bold",
+            fontSize: 17,
+            marginBottom: 5,
+            marginHorizontal: 5
+          }}
+        >
+          {categoria}
+        </Text>
+        <View
+          style={{
+            borderColor: "rgba(30, 29, 37, 0.8)",
+            borderWidth: 0.3,
 
-  const SummarySection = () => (
-    <BlurView
-      intensity={50}
-      tint='dark'
-      style={{
-        padding: 10,
-        borderRadius: 16,
-        overflow: 'hidden',
-        marginBottom: 20,
-        marginHorizontal: 15,
-        justifyContent: 'space-between',
-        flexDirection: 'row'
-      }}
-    >
-      <Text
-        style={{
-          color: 'white',
-          fontSize: 20,
-          fontWeight: 'bold',
-          alignSelf: 'center'
-        }}
-      >
-        Saldo :
-      </Text>
-      <Text
-        style={{
-          color: 'white',
-          fontSize: 20,
-          // fontWeight: 'bold',
-          alignSelf: 'center'
-        }}
-      >
-        {formatCurrency(totalAcumulado)}
-      </Text>
-    </BlurView>
-  )
+            marginVertical: 10,
+            opacity: 0.5,
+            marginHorizontal: 50
+          }}
+        />
+
+        {/* Exibindo transações agrupadas por ano */}
+        {Object.keys(filteredTransactions[categoria]).map((year, yearIndex) =>
+          <View key={yearIndex}>
+            <View style={{ flexDirection: "row" }}>
+              <Ionicons
+                name="calendar-clear-outline"
+                color={"white"}
+                style={{ marginHorizontal: 5 }}
+              />
+              <Text
+                style={{ color: "white", fontWeight: "bold", fontSize: 10 }}
+              >
+                {year} {/* Exibe o ano */}
+              </Text>
+            </View>
+
+            {/* Exibindo transações agrupadas por mês dentro do ano */}
+            {Object.keys(
+              filteredTransactions[categoria][year]
+            ).map((month, monthIndex) =>
+              <View key={monthIndex} style={{ marginBottom: 10 }}>
+                <Text
+                  style={{
+                    color: "white",
+                    fontWeight: "bold",
+                    fontSize: 15,
+                    marginTop: 10,
+                    marginHorizontal: 5
+                  }}
+                >
+                  {/* Exibe o nome do mês e o total de despesas do mês */}
+                  {format(new Date(year, month), "MMMM", { locale: ptBR })} -
+                  Total:{" "}
+                  {formatCurrency(
+                    filteredTransactions[categoria][year][month].total
+                  )}
+                </Text>
+
+                {/* Exibindo as transações do mês */}
+                {filteredTransactions[categoria][year][
+                  month
+                ].transacoes.map((transaction, i) =>
+                  <BlurView
+                    key={`${transaction.id}-${i}`}
+                    intensity={90}
+                    tint="dark"
+                    style={{
+                      padding: 10,
+                      borderRadius: 16,
+                      overflow: "hidden",
+                      marginTop: 5
+                    }}
+                  >
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        justifyContent: "space-between",
+                        alignItems: "center"
+                      }}
+                    >
+                      <Text
+                        style={{
+                          color: "white",
+                          fontWeight: "bold",
+                          fontSize: 16
+                        }}
+                      >
+                        {formatCurrency(transaction.amount)}
+                      </Text>
+                      <Text style={{ color: "white", fontSize: 14 }}>
+                        {transaction.expense_date}
+                      </Text>
+                    </View>
+                  </BlurView>
+                )}
+              </View>
+            )}
+          </View>
+        )}
+      </View>
+    );
+  };
 
   return (
     <ImageBackground
-      source={require('../assets/bg.png')}
+      source={require("../assets/bg.png")}
       style={{ flex: 1, paddingTop: 35 }}
     >
+      <TouchableOpacity
+        onPress={() => {
+          navigation.goBack();
+        }}
+        style={{ position: "absolute", left: 25, marginTop: 63 }}
+      />
       <View
         style={{
-          padding: 10
+          flexDirection: "row",
+          justifyContent: "center",
+          marginTop: 20
         }}
       >
         <TouchableOpacity
           style={{
-            alignItems: 'center',
-            alignContent: 'center',
-            alignSelf: 'center'
+            backgroundColor:
+              viewType === "entradas"
+                ? "rgba(30, 29, 37, 0.5)"
+                : "rgba(30, 29, 37, 0.9)",
+            padding: 10,
+            borderRadius: 10,
+            marginHorizontal: 5,
+            paddingHorizontal: 20,
+            elevation: 5
           }}
+          onPress={() => setViewType("entradas")}
         >
-          <Image
-            source={require('../assets/logo.png')}
-            style={{ height: 30, width: 30, tintColor: 'white' }}
-          />
+          <Text style={{ color: "white", fontSize: 14 }}>Entradas</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={{
+            backgroundColor:
+              viewType === "despesas"
+                ? "rgba(30, 29, 37, 0.5)"
+                : "rgba(30, 29, 37, 0.9)",
+            padding: 10,
+            borderRadius: 10,
+            marginHorizontal: 5,
+            paddingHorizontal: 20,
+            elevation: 5
+          }}
+          onPress={() => setViewType("despesas")}
+        >
+          <Text style={{ color: "white", fontSize: 14 }}>Despesas</Text>
         </TouchableOpacity>
       </View>
-      <SummarySection />
 
-      <View
-        style={{
-          flexDirection: 'row',
-          justifyContent: 'center',
-          marginBottom: 10
-        }}
-      >
-        <TouchableOpacity
-          style={{
-            backgroundColor:
-              viewType === 'tudo' ? 'rgba(30, 29, 37, 0.5)' : '#3e3e3e',
-            padding: 10,
-            borderRadius: 10,
-            marginHorizontal: 8,
-            justifyContent: 'center',
-            alignItems: 'center',
-            elevation: 2
-          }}
-          onPress={() => setViewType('tudo')}
-        >
-          <Text style={{ color: 'white', fontSize: 14 }}>Tudo</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={{
-            backgroundColor:
-              viewType === 'entradas' ? 'rgba(30, 29, 37, 0.5)' : '#3e3e3e',
-            padding: 10,
-            borderRadius: 10,
-            marginHorizontal: 5
-          }}
-          onPress={() => setViewType('entradas')}
-        >
-          <Text style={{ color: 'white', fontSize: 14 }}>Entradas</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={{
-            backgroundColor:
-              viewType === 'despesas' ? 'rgba(30, 29, 37, 0.5)' : '#3e3e3e',
-            padding: 10,
-            borderRadius: 10,
-            marginHorizontal: 5
-          }}
-          onPress={() => setViewType('despesas')}
-        >
-          <Text style={{ color: 'white', fontSize: 14 }}>Despesas</Text>
-        </TouchableOpacity>
-      </View>
       <ScrollView
         showsVerticalScrollIndicator={false}
         style={{
           paddingTop: 10,
           paddingHorizontal: 16,
           borderRadius: 26,
-          overflow: 'hidden'
+          overflow: "hidden"
         }}
       >
-        {/* <FilterSection /> */}
-
-        {transactions.map((transaction, index) => (
-          <BlurView
-            key={`${transaction.id}-${index}`}
-            intensity={90}
-            tint='dark'
-            style={{
-              padding: 10,
-              borderRadius: 16,
-              overflow: 'hidden',
-              marginTop: 5
-            }}
-          >
-            <View
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                justifyContent: 'space-between'
-              }}
-            >
-              <View
-                style={{
-                  flexDirection: 'row',
-                  justifyContent: 'space-between',
-                  alignItems: 'center'
-                }}
-              >
-                <Image
-                  source={
-                    transaction.type === 'entrada'
-                      ? require('../assets/up.png')
-                      : require('../assets/down.png')
-                  }
-                  style={{
-                    height: 30,
-                    width: 30,
-                    tintColor:
-                      transaction.type === 'entrada' ? '#299318' : 'red'
-                  }}
-                />
-                <Text
-                  style={{
-                    color: 'white',
-                    paddingLeft: 10,
-                    fontWeight: 'bold'
-                  }}
-                >
-                  {formatCurrency(transaction.amount)}
-                </Text>
-              </View>
-              <Text style={{ color: 'white', paddingLeft: 10 }}>
-                {transaction.date}
-              </Text>
-            </View>
-          </BlurView>
-        ))}
+        {viewType === "entradas"
+          ? renderEntries()
+          : renderTransactionsByCategory()}
       </ScrollView>
     </ImageBackground>
-  )
-}
+  );
+};
 
-export default ExtratoScreen
+export default ExtratoScreen;
