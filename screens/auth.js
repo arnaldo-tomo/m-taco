@@ -21,6 +21,7 @@ import { Formik } from 'formik'
 import * as Yup from 'yup'
 import axios from 'axios'
 import AsyncStorage from '@react-native-async-storage/async-storage'
+import { API_UEL } from '../config/app'
 
 export default function Auth_login () {
   const Router = useNavigation()
@@ -39,7 +40,7 @@ export default function Auth_login () {
   const handleLogin = async (values, { setSubmitting, setErrors }) => {
     try {
       const response = await axios.post(
-        'https://apimytaco.networkmoz.com/api/login',
+       `${API_UEL}/login`,
         {
           email: values.email,
           password: values.password
