@@ -322,73 +322,20 @@ const ExtratoScreen = ({ navigation }) => {
     );
   };
 
-  return (
-    <ImageBackground
-      source={require("../assets/bg.png")}
-      style={{ flex: 1, paddingTop: 35 }}
-    >
-      <TouchableOpacity
-        onPress={() => {
-          navigation.goBack();
-        }}
-        style={{ position: "absolute", left: 25, marginTop: 63 }}
-      />
-      <View
-        style={{
-          flexDirection: "row",
-          justifyContent: "center",
-          marginTop: 20
-        }}
-      >
-        <TouchableOpacity
-          style={{
-            backgroundColor:
-              viewType === "entradas"
-                ? "rgba(30, 29, 37, 0.5)"
-                : "rgba(30, 29, 37, 0.9)",
-            padding: 10,
-            borderRadius: 10,
-            marginHorizontal: 5,
-            paddingHorizontal: 20,
-            elevation: 5
-          }}
-          onPress={() => setViewType("entradas")}
-        >
+  return <ImageBackground source={require("../assets/bg.png")} style={{ flex: 1, paddingTop: 35 }}>
+      <View style={{ flexDirection: "row", justifyContent: "center", marginTop: 20 }}>
+        <TouchableOpacity style={{ backgroundColor: viewType === "entradas" ? "rgba(30, 29, 37, 0.5)" : "rgba(30, 29, 37, 0.9)", padding: 10, borderRadius: 10, marginHorizontal: 5, paddingHorizontal: 20, elevation: 5 }} onPress={() => setViewType("entradas")}>
           <Text style={{ color: "white", fontSize: 14 }}>Entradas</Text>
         </TouchableOpacity>
-        <TouchableOpacity
-          style={{
-            backgroundColor:
-              viewType === "despesas"
-                ? "rgba(30, 29, 37, 0.5)"
-                : "rgba(30, 29, 37, 0.9)",
-            padding: 10,
-            borderRadius: 10,
-            marginHorizontal: 5,
-            paddingHorizontal: 20,
-            elevation: 5
-          }}
-          onPress={() => setViewType("despesas")}
-        >
+        <TouchableOpacity style={{ backgroundColor: viewType === "despesas" ? "rgba(30, 29, 37, 0.5)" : "rgba(30, 29, 37, 0.9)", padding: 10, borderRadius: 10, marginHorizontal: 5, paddingHorizontal: 20, elevation: 5 }} onPress={() => setViewType("despesas")}>
           <Text style={{ color: "white", fontSize: 14 }}>Despesas</Text>
         </TouchableOpacity>
       </View>
 
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        style={{
-          paddingTop: 10,
-          paddingHorizontal: 16,
-          borderRadius: 26,
-          overflow: "hidden"
-        }}
-      >
-        {viewType === "entradas"
-          ? renderEntries()
-          : renderTransactionsByCategory()}
+      <ScrollView showsVerticalScrollIndicator={false} style={{ paddingTop: 10, paddingHorizontal: 16, borderRadius: 26, overflow: "hidden" }}>
+        {viewType === "entradas" ? renderEntries() : renderTransactionsByCategory()}
       </ScrollView>
-    </ImageBackground>
-  );
+    </ImageBackground>;
 };
 
 export default ExtratoScreen;

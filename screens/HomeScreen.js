@@ -20,7 +20,7 @@ import axios from 'axios'
 import React, { useState, useEffect } from 'react'
 import { Picker } from '@react-native-picker/picker'
 import DropDownPicker from 'react-native-dropdown-picker'
-
+import ContentLoader, { Rect, Circle } from 'react-content-loader/native'
 import { Dropdown } from 'react-native-element-dropdown'
 import AntDesign from '@expo/vector-icons/AntDesign'
 import AsyncStorage from '@react-native-async-storage/async-storage'
@@ -52,6 +52,10 @@ export default function HomeScreen ({ navigation }) {
       .typeError('Digite um valor válido')
   })
 
+
+
+
+  
   const renderItem = item => {
     return (
       <View style={styles.item}>
@@ -238,6 +242,34 @@ export default function HomeScreen ({ navigation }) {
     }).format(value)
   }
 
+  const MyLoader = () => (
+    <ContentLoader
+      height={140}
+      speed={1}
+      backgroundColor={'#333'}
+      foregroundColor={'#999'}
+      viewBox="0 0 380 70"
+    >
+      {/* Only SVG shapes */}
+      <rect x="0" y="0" rx="5" ry="5" width="70" height="70" />
+      <rect x="80" y="17" rx="4" ry="4" width="300" height="13" />
+      <rect x="80" y="40" rx="3" ry="3" width="250" height="10" />
+    </ContentLoader>
+  )
+  const FadingLoaderCard1 = () => {
+    return (
+      <ContentLoader
+        width={400}
+        height={40}
+        backgroundColor="#ababab"
+        foregroundColor="#fafafa"
+      >
+        <rect x="70" y="15" rx="5" ry="5" width="300" height="15" />
+        <rect x="70" y="39" rx="5" ry="5" width="220" height="9" />
+        <rect x="20" y="10" rx="0" ry="0" width="40" height="40" />
+      </ContentLoader>
+    )
+  }
   if (loading) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
@@ -422,6 +454,9 @@ export default function HomeScreen ({ navigation }) {
           <Text style={{ color: 'white', fontSize: 12 }}>Extrato</Text>
         </View>
 
+        {/* nice */}
+        
+   
         <ScrollView
           showsHorizontalScrollIndicator={false}
           style={{
@@ -431,66 +466,101 @@ export default function HomeScreen ({ navigation }) {
             overflow: 'hidden'
           }}
         >
-          {transactions.slice(4).map(transaction => (
-            <TouchableOpacity
-              key={transaction.id}
-              onPress={() => navigation.navigate('ExtratoScreen')}
-            >
-              <BlurView
-                key={transaction.id}
-                intensity={90}
-                tint='dark'
-                style={{
-                  padding: 10,
-                  borderRadius: 16,
-                  overflow: 'hidden',
-                  marginTop: 5
-                }}
-              >
-                <View
-                  style={{
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    justifyContent: 'space-between'
-                  }}
+          {transactions.length === 0 ?
+            <View>
+             <ContentLoader
+             height={90}
+             speed={1}
+             backgroundColor={'#333'}
+             foregroundColor={'#999'}
+             viewBox="0 0 380 70"
+             animate={true}
+             title='loading...'
+             foregroundOpacity="0.2"
+             >
+
+             <Rect x="0" y="0" rx="5" ry="5" width="70" height="70" />
+             <Rect x="80" y="5" rx="4" ry="4" width="300" height="7" />
+             <Rect x="80" y="20" rx="4" ry="4" width="280" height="7" />
+             <Rect x="80" y="35" rx="3" ry="3" width="240" height="7" />
+             <Rect x="80" y="48" rx="3" ry="3" width="200" height="7" />
+            <Rect x="80" y="63" rx="3" ry="3" width="180" height="7" />
+         
+                
+                
+              </ContentLoader>
+             </View>
+            
+            
+            :
+          <>
+            {
+              transactions.slice(4).map(transaction => (
+                <TouchableOpacity
+                  key={transaction.id}
+                  onPress={() => navigation.navigate('ExtratoScreen')}
                 >
-                  <View
+                  <BlurView
+                    key={transaction.id}
+                    intensity={90}
+                    tint='dark'
                     style={{
-                      flexDirection: 'row',
-                      justifyContent: 'space-between',
-                      alignItems: 'center'
+                      padding: 10,
+                      borderRadius: 16,
+                      overflow: 'hidden',
+                      marginTop: 5
                     }}
                   >
-                    <Image
-                      source={
-                        transaction.type === 'entrada'
-                          ? require('../assets/courseup.svg')
-                          : require('../assets/course.svg')
-                      }
+                    <View
                       style={{
-                        height: 30,
-                        width: 30,
-                        tintColor:
-                          transaction.type === 'entrada' ? '#299318' : 'red'
-                      }}
-                    />
-                    <Text
-                      style={{
-                        color: 'white',
-                        paddingLeft: 10,
-                        fontWeight: 'bold'
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        justifyContent: 'space-between'
                       }}
                     >
-                      {formatCurrency(transaction.amount)} 
-                    </Text>
-                  </View>
-                  <Text style={{ color: 'white', paddingLeft: 10 }}>
-                    {transaction.date}
-                  </Text>
-                </View>
-              </BlurView>
-            </TouchableOpacity>
-          ))}
+                      <View
+                        style={{
+                          flexDirection: 'row',
+                          justifyContent: 'space-between',
+                          alignItems: 'center'
+                        }}
+                      >
+                        <Image
+                          source={
+                            transaction.type === 'entrada'
+                              ? require('../assets/courseup.svg')
+                              : require('../assets/course.svg')
+                          }
+                          style={{
+                            height: 30,
+                            width: 30,
+                            tintColor:
+                              transaction.type === 'entrada' ? '#299318' : 'red'
+                          }}
+                        />
+                        <Text
+                          style={{
+                            color: 'white',
+                            paddingLeft: 10,
+                            fontWeight: 'bold'
+                          }}
+                        >
+                          {formatCurrency(transaction.amount)}
+                        </Text>
+                      </View>
+                      <Text style={{ color: 'white', paddingLeft: 10 }}>
+                        {transaction.date}
+                      </Text>
+                    </View>
+                  </BlurView>
+                </TouchableOpacity>
+              ))
+              }
+              </>
+            
+ 
+        }
+
         </ScrollView>
       </ImageBackground>
 
