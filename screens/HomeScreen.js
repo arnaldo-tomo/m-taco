@@ -29,6 +29,7 @@ import { ptBR } from 'date-fns/locale'
 import * as Yup from 'yup'
 
 import { showMessage, hideMessage } from 'react-native-flash-message'
+import { API_UEL } from '../config/app'
 export default function HomeScreen ({ navigation }) {
   const [successMessage, setSuccessMessage] = useState('')
   const [categories, setCategories] = useState([])
@@ -87,7 +88,7 @@ export default function HomeScreen ({ navigation }) {
     const fetchCategories = async () => {
       try {
         const response = await axios.get(
-'https://apimytaco.networkmoz.com/api/categories'
+        `${API_UEL}/categories`
 
         )
         const formattedItems = response.data.map(category => ({
@@ -103,44 +104,30 @@ export default function HomeScreen ({ navigation }) {
       }
     }
 
-    const fetchTransactions = async () => {
-      try {
-        const userId = await AsyncStorage.getItem('userId')
-        const response = await axios.get(
-          'https://apimytaco.networkmoz.com/api/transacoes',
-          {
-            params: {
-              user_id: userId
-            }
-          }
-        )
-        setTransactions(response.data)
-      } catch (error) {
-        console.error('Erro ao buscar transações:', error)
-      }
-    }
 
-    const fetchSummary = async () => {
-      const userId = await AsyncStorage.getItem('userId')
-      try {
-        const response = await axios.get(
-          'https://apimytaco.networkmoz.com/api/monthly-summary',
-          {
-            params: { user_id: userId }
-          }
-        )
-        setTotalEntries(response.data.total_entries)
-        setTotalExpenses(response.data.total_expenses)
-      } catch (error) {
-        console.error('Erro ao buscar resumo mensal:', error)
-      }
-    }
-    fetchSummary()
-    fetchTransactions()
-    fetchUserData()
-    fetchCategories()
+
+   
+    fetchSummary();
+    fetchTransactions();
+    fetchUserData();
+    fetchCategories();
   }, [])
 
+  const fetchSummary = async () => {
+    const userId = await AsyncStorage.getItem('userId')
+    try {
+      const response = await axios.get(
+        `${API_UEL}/monthly-summary`,
+        {
+          params: { user_id: userId }
+        }
+      )
+      setTotalEntries(response.data.total_entries)
+      setTotalExpenses(response.data.total_expenses)
+    } catch (error) {
+      console.error('Erro ao buscar resumo mensal:', error)
+    }
+  }
   const submitForm = async (values, { resetForm }) => {
     try {
       // Obter o user_id do AsyncStorage
@@ -151,12 +138,14 @@ export default function HomeScreen ({ navigation }) {
 
       // Enviar os dados para a API
       const response = await axios.post(
-        'https://apimytaco.networkmoz.com/api/entries',
+     `${API_UEL}/entries`,
         formData
       )
 
       console.log('Entrada registrada com sucesso:', response.data)
-
+      // Atualizar a lista de transações
+      fetchSummary()
+      fetchTransactions()
       // Definir mensagem de sucesso
       setSuccessMessage('Entrada registrada com sucesso!')
       showMessage({
@@ -197,12 +186,13 @@ export default function HomeScreen ({ navigation }) {
       }
 
       const response = await axios.post(
-        'https://apimytaco.networkmoz.com/api/expenses',
+       `${API_UEL}/expenses`,
         payload
       )
 
       console.log('Gasto registrado com sucesso:', response.data)
-
+      fetchSummary()
+      fetchTransactions()
       // Definir mensagem de sucesso
       showMessage({
         message: 'Gasto registrado com sucesso!',
@@ -221,6 +211,23 @@ export default function HomeScreen ({ navigation }) {
     } catch (error) {
       console.error('Erro ao registrar gasto:', error)
       // Tratar o erro, como mostrar uma mensagem ao usuário
+    }
+  }
+
+  const fetchTransactions = async () => {
+    try {
+      const userId = await AsyncStorage.getItem('userId')
+      const response = await axios.get(
+    `${API_UEL}/transacoes`,
+        {
+          params: {
+            user_id: userId
+          }
+        }
+      )
+      setTransactions(response.data)
+    } catch (error) {
+      console.error('Erro ao buscar transações:', error)
     }
   }
 
@@ -424,7 +431,7 @@ export default function HomeScreen ({ navigation }) {
             overflow: 'hidden'
           }}
         >
-          {transactions.map(transaction => (
+          {transactions.slice(4).map(transaction => (
             <TouchableOpacity
               key={transaction.id}
               onPress={() => navigation.navigate('ExtratoScreen')}
@@ -474,7 +481,7 @@ export default function HomeScreen ({ navigation }) {
                         fontWeight: 'bold'
                       }}
                     >
-                      {formatCurrency(transaction.amount)}
+                      {formatCurrency(transaction.amount)} 
                     </Text>
                   </View>
                   <Text style={{ color: 'white', paddingLeft: 10 }}>
@@ -487,7 +494,7 @@ export default function HomeScreen ({ navigation }) {
         </ScrollView>
       </ImageBackground>
 
-      <Formik initialValues={{ valor: '' }} onSubmit={submitForm}>
+      <Formik initialValues={{ valor: '',origim:'' }} onSubmit={submitForm}>
         {({ handleChange, handleSubmit, values }) => (
           <PermissionModal
             title='Adicionar Nova Entrada'
@@ -501,6 +508,30 @@ export default function HomeScreen ({ navigation }) {
                 flexDirection: 'row',
                 justifyContent: 'space-between',
                 alignItems: 'center'
+              }}
+            >
+
+             
+           
+              <TextInput
+                style={{
+                  borderColor: '#8c97b5',
+                  borderWidth: 0.5,
+                  width: '100%',
+                  padding: 10,
+                  borderRadius: 10
+                }}
+                onChangeText={handleChange('origim')}
+                value={values.origim}
+                placeholder='Origem do valor'
+                keyboardType='default'
+              />
+            </View>
+            <View
+              style={{
+                flexDirection: 'row',
+                justifyContent: 'space-between',
+                alignItems: 'center',marginTop:10
               }}
             >
               <Image
