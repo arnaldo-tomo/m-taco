@@ -4,7 +4,8 @@ import {
   Text,
   ScrollView,
   TouchableOpacity,
-  ImageBackground
+  ImageBackground,
+  ActivityIndicator
 } from "react-native";
 import { BlurView } from "expo-blur";
 import axios from "axios";
@@ -13,8 +14,10 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { API_UEL } from "../config/app";
+import { Image } from "expo-image";
 
 const ExtratoScreen = ({ navigation }) => {
+  const [isLoading, setIsLoading] = useState(true);
   const [viewType, setViewType] = useState("tudo");
   const [transactions, setTransactions] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -32,12 +35,16 @@ const ExtratoScreen = ({ navigation }) => {
     };
 
     const fetchTransactions = async () => {
+      setIsLoading(true);
       try {
         const userId = await AsyncStorage.getItem("userId");
         const response = await axios.get(`${API_UEL}/transacoes`, {
-          params: { user_id: userId }
+          params: {
+            user_id: userId
+          }
         });
         setTransactions(response.data);
+        setIsLoading(false); // Desativa o carregamento
       } catch (error) {
         console.error("Erro ao buscar transações:", error);
       }
@@ -57,7 +64,9 @@ const ExtratoScreen = ({ navigation }) => {
             const response = await axios.get(
               `${API_UEL}/entries/current-month`,
               {
-                params: { user_id: userId }
+                params: {
+                  user_id: userId
+                }
               }
             );
 
@@ -148,17 +157,88 @@ const ExtratoScreen = ({ navigation }) => {
     }).format(value);
   };
 
+  // Função para renderizar as transações agrupadas por categoria e ano e mês
   // Função para renderizar as entradas agrupadas por ano e mês
+
   const renderEntries = () => {
+    if (isLoading) {
+      return (
+        <ActivityIndicator
+          size="large"
+          color="#0000ff"
+          style={{ marginTop: 20 }}
+        />
+      );
+    }
+
+    if (Object.keys(entries).length === 0) {
+      return (
+        <BlurView
+          intensity={90}
+          tint="dark"
+          style={{
+            padding: 10,
+            borderRadius: 16,
+            overflow: "hidden",
+            marginHorizontal: 13
+          }}
+        >
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "space-between"
+            }}
+          >
+            <View
+              style={{
+                flexDirection: "row",
+                justifyContent: "space-between",
+                alignItems: "center"
+              }}
+            >
+              <Image
+                source={require("../assets/logo.png")}
+                style={{
+                  height: 30,
+                  width: 30,
+                  tintColor: "rgba(255, 255, 266, 0.5)",
+                  marginRight: 5
+                }}
+              />
+              <Text style={{ color: "white", fontWeight: "bold" }}>
+                {" "}Nenhuma entrada encontrada
+              </Text>
+            </View>
+          </View>
+        </BlurView>
+      );
+    }
     return Object.keys(entries).map((year, yearIndex) =>
-      <View key={yearIndex} style={{ marginBottom: 20 }}>
-        <Text style={{ color: "white", fontWeight: "bold", fontSize: 17 }}>
+      <View
+        key={yearIndex}
+        style={{
+          marginBottom: 20
+        }}
+      >
+        <Text
+          style={{
+            color: "white",
+            fontWeight: "bold",
+            fontSize: 17
+          }}
+        >
           {year} {/* Exibe o ano */}
         </Text>
 
         {/* Exibir entradas agrupadas por mês */}
         {Object.keys(entries[year]).map((month, monthIndex) =>
-          <View key={monthIndex} style={{ marginBottom: 10 }}>
+          <View
+            key={monthIndex}
+            style={{
+              marginBottom: 10
+            }}
+          >
             <Text
               style={{
                 color: "white",
@@ -194,14 +274,28 @@ const ExtratoScreen = ({ navigation }) => {
                   }}
                 >
                   <Text
-                    style={{ color: "white", fontWeight: "bold", fontSize: 16 }}
+                    style={{
+                      color: "white",
+                      fontWeight: "bold",
+                      fontSize: 16
+                    }}
                   >
                     {formatCurrency(entry.amount)}
                   </Text>
-                  <Text style={{ color: "white", fontSize: 14 }}>
+                  <Text
+                    style={{
+                      color: "white",
+                      fontSize: 14
+                    }}
+                  >
                     {entry.entry_date}
                   </Text>
-                  <Text style={{ color: "white", fontSize: 12 }}>
+                  <Text
+                    style={{
+                      color: "white",
+                      fontSize: 12
+                    }}
+                  >
                     {entry.origim}
                   </Text>
                 </View>
@@ -214,8 +308,73 @@ const ExtratoScreen = ({ navigation }) => {
   };
 
   const renderTransactionsByCategory = () => {
+    if (isLoading) {
+      return (
+        <ActivityIndicator
+          size="large"
+          color="#0000ff"
+          style={{ marginTop: 20 }}
+        />
+      );
+    }
+
+    if (Object.keys(filteredTransactions).length === 0) {
+      return (
+        <BlurView
+          intensity={90}
+          tint="dark"
+          style={{
+            padding: 10,
+            borderRadius: 16,
+            overflow: "hidden",
+            marginHorizontal: 13
+          }}
+        >
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "space-between"
+            }}
+          >
+            <View
+              style={{
+                flexDirection: "row",
+                justifyContent: "space-between",
+                alignItems: "center"
+              }}
+            >
+              <Image
+                source={require("../assets/logo.png")}
+                style={{
+                  height: 30,
+                  width: 30,
+                  tintColor: "rgba(255, 255, 266, 0.5)",
+                  marginRight: 5
+                }}
+              />
+              <Text
+                style={{
+                  color: "white",
+                  fontWeight: "bold",
+                  alignSelf: "center"
+                }}
+              >
+                Nenhuma Despesa encontrada
+              </Text>
+            </View>
+          </View>
+        </BlurView>
+      );
+    }
+
     return Object.keys(filteredTransactions).map((categoria, index) =>
-      <View key={index} style={{ marginBottom: 20 }}>
+      <View
+        key={index}
+        style={{
+          marginBottom: 20
+        }}
+      >
         {/* Exibindo o nome da categoria */}
         <Text
           style={{
@@ -242,14 +401,24 @@ const ExtratoScreen = ({ navigation }) => {
         {/* Exibindo transações agrupadas por ano */}
         {Object.keys(filteredTransactions[categoria]).map((year, yearIndex) =>
           <View key={yearIndex}>
-            <View style={{ flexDirection: "row" }}>
+            <View
+              style={{
+                flexDirection: "row"
+              }}
+            >
               <Ionicons
                 name="calendar-clear-outline"
                 color={"white"}
-                style={{ marginHorizontal: 5 }}
+                style={{
+                  marginHorizontal: 5
+                }}
               />
               <Text
-                style={{ color: "white", fontWeight: "bold", fontSize: 10 }}
+                style={{
+                  color: "white",
+                  fontWeight: "bold",
+                  fontSize: 10
+                }}
               >
                 {year} {/* Exibe o ano */}
               </Text>
@@ -259,7 +428,12 @@ const ExtratoScreen = ({ navigation }) => {
             {Object.keys(
               filteredTransactions[categoria][year]
             ).map((month, monthIndex) =>
-              <View key={monthIndex} style={{ marginBottom: 10 }}>
+              <View
+                key={monthIndex}
+                style={{
+                  marginBottom: 10
+                }}
+              >
                 <Text
                   style={{
                     color: "white",
@@ -308,7 +482,12 @@ const ExtratoScreen = ({ navigation }) => {
                       >
                         {formatCurrency(transaction.amount)}
                       </Text>
-                      <Text style={{ color: "white", fontSize: 14 }}>
+                      <Text
+                        style={{
+                          color: "white",
+                          fontSize: 14
+                        }}
+                      >
                         {transaction.expense_date}
                       </Text>
                     </View>
@@ -322,20 +501,134 @@ const ExtratoScreen = ({ navigation }) => {
     );
   };
 
-  return <ImageBackground source={require("../assets/bg.png")} style={{ flex: 1, paddingTop: 35 }}>
-      <View style={{ flexDirection: "row", justifyContent: "center", marginTop: 20 }}>
-        <TouchableOpacity style={{ backgroundColor: viewType === "entradas" ? "rgba(30, 29, 37, 0.5)" : "rgba(30, 29, 37, 0.9)", padding: 10, borderRadius: 10, marginHorizontal: 5, paddingHorizontal: 20, elevation: 5 }} onPress={() => setViewType("entradas")}>
+  return (
+    <ImageBackground
+      source={require("../assets/bg.png")}
+      style={{ flex: 1, paddingTop: 35 }}
+    >
+      <View
+        style={{
+          flexDirection: "row",
+          justifyContent: "center",
+          marginTop: 20,
+          justifyContent: "space-between",
+          alignContent: "center",
+          alignItems: "center",
+          marginHorizontal: 12
+        }}
+      >
+        <TouchableOpacity onPress={() => navigation.goBack()}>
+          <Ionicons name="chevron-back" size={30} color={"white"} />
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={{
+            backgroundColor:
+              viewType === "entradas"
+                ? "rgba(30, 29, 37, 0.5)"
+                : "rgba(30, 29, 37, 0.9)",
+            padding: 10,
+            borderRadius: 10,
+            marginHorizontal: 5,
+            paddingHorizontal: 20,
+            elevation: 5
+          }}
+          onPress={() => setViewType("entradas")}
+        >
           <Text style={{ color: "white", fontSize: 14 }}>Entradas</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={{ backgroundColor: viewType === "despesas" ? "rgba(30, 29, 37, 0.5)" : "rgba(30, 29, 37, 0.9)", padding: 10, borderRadius: 10, marginHorizontal: 5, paddingHorizontal: 20, elevation: 5 }} onPress={() => setViewType("despesas")}>
+        <TouchableOpacity
+          style={{
+            backgroundColor:
+              viewType === "despesas"
+                ? "rgba(30, 29, 37, 0.5)"
+                : "rgba(30, 29, 37, 0.9)",
+            padding: 10,
+            borderRadius: 10,
+            marginHorizontal: 5,
+            paddingHorizontal: 20,
+            elevation: 5
+          }}
+          onPress={() => setViewType("despesas")}
+        >
           <Text style={{ color: "white", fontSize: 14 }}>Despesas</Text>
         </TouchableOpacity>
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false} style={{ paddingTop: 10, paddingHorizontal: 16, borderRadius: 26, overflow: "hidden" }}>
-        {viewType === "entradas" ? renderEntries() : renderTransactionsByCategory()}
-      </ScrollView>
-    </ImageBackground>;
+      {isLoading
+        ? <View
+            style={{
+              flex: 1,
+              justifyContent: "center",
+              alignContent: "center",
+              alignItems: "center"
+            }}
+          >
+            <Image
+              source={require("../assets/loading.gif")}
+              style={{ width: 50, height: 50 }}
+            />
+          </View>
+        : entries.length === 0
+          ? <View
+              style={{ marginTop: 20, alignItems: "center" } // Exibe "Não encontrado" se a lista estiver vazia
+              }
+            >
+              <BlurView
+                intensity={90}
+                tint="dark"
+                style={{
+                  padding: 10,
+                  borderRadius: 16,
+                  overflow: "hidden",
+                  marginHorizontal: 13
+                }}
+              >
+                <View
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    justifyContent: "space-between"
+                  }}
+                >
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      justifyContent: "space-between",
+                      alignItems: "center"
+                    }}
+                  >
+                    <Image
+                      source={require("../assets/logo.png")}
+                      style={{
+                        height: 30,
+                        width: 30,
+                        tintColor: "rgba(255, 255, 266, 0.5)",
+                        marginRight: 5
+                      }}
+                    />
+                    <Text style={{ color: "white", fontWeight: "bold" }}>
+                      Nenhum dado encontrado
+                    </Text>
+                    {/* <Image source={require('../assets/loading.gif')} style={{width:20,height:20}} /> */}
+                  </View>
+                </View>
+              </BlurView>
+            </View>
+          : <ScrollView
+              showsVerticalScrollIndicator={false}
+              style={{
+                paddingTop: 10,
+                paddingHorizontal: 16,
+                borderRadius: 26,
+                overflow: "hidden"
+              }}
+            >
+              {viewType === "entradas"
+                ? renderEntries()
+                : renderTransactionsByCategory()}
+            </ScrollView>}
+    </ImageBackground>
+  );
 };
 
 export default ExtratoScreen;
