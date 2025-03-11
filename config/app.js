@@ -1,1 +1,1 @@
-export const API_UEL = "https://apimytaco.networkmoz.com/api";
+export const API_UEL = "http://192.168.77.104:2020/api";
