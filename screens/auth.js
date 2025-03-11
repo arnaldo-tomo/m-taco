@@ -185,7 +185,7 @@ export default function Auth_login () {
                     <Text style={styles.errorText}>{errors.apiError}</Text>
                   )}
 
-                  <TouchableOpacity style={{ paddingBottom: 15 }}>
+                  <TouchableOpacity onPress={()=>Router.navigate('Auth_ForgotPassword')} style={{ paddingBottom: 15 }}>
                     <Text style={styles.forgotPasswordText}>
                       Esqueceu sua senha?
                     </Text>
@@ -268,7 +268,7 @@ const styles = StyleSheet.create({
   forgotPasswordText: {
     color: '#FFFFFF',
     fontWeight: 'bold',
-    alignSelf: 'center'
+    alignSelf: 'flex-end'
   },
   signUpContainer: {
     flexDirection: 'row',
