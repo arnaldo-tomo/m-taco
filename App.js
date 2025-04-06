@@ -5,6 +5,6 @@ import FlashMessage from "react-native-flash-message";
 export default function App () {
   return <View style={{ flex: 1 }}>
       <Route />
-      <FlashMessage position="top" />
+      <FlashMessage style={{ marginTop:40 }} position="top" />
     </View>;
 }
