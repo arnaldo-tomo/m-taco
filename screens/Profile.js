@@ -75,43 +75,50 @@ export default function Profile({ navigation }) {
   }, [])
 
   const handleUpdateProfile = async (values) => {
-    setIsSaving(true)
+    setIsSaving(true);
     
     try {
-      const userId = await AsyncStorage.getItem('userId')
+      const userId = await AsyncStorage.getItem('userId');
       
       const requestData = {
         name: values.name,
         email: values.email
-      }
+      };
       
       // Adicionar senha apenas se o usuário forneceu a senha atual
       if (values.currentPassword) {
-        requestData.current_password = values.currentPassword
-        requestData.new_password = values.newPassword
+        requestData.current_password = values.currentPassword;
+        requestData.new_password = values.newPassword;
       }
       
-      await axios.put(`${API_UEL}/user/${userId}`, requestData)
+      // Fazer a requisição para atualizar o perfil
+      await axios.put(`${API_UEL}/user/${userId}`, requestData);
       
       // Atualizar o nome do usuário no AsyncStorage
-      await AsyncStorage.setItem('userName', values.name)
+      // O método setItem retorna uma Promise que resolve para undefined
+      // Por isso o console.log estava mostrando undefined
+      await AsyncStorage.setItem('userName', values.name);
+      
+      // Verificar se o nome foi salvo corretamente
+      const savedName = await AsyncStorage.getItem('userName');
+      console.log('Updated user name:', savedName);
       
       showMessage({
         message: 'Perfil atualizado com sucesso!',
         type: 'success',
         duration: 3000,
         floating: true
-      })
+      });
       
       // Navegar de volta para a tela inicial
-      navigation.goBack()
+      navigation.goBack();
       
     } catch (error) {
-      console.error('Erro ao atualizar perfil:', error)
+      console.error('Erro ao atualizar perfil:', error);
       
-      let errorMessage = 'Erro ao atualizar perfil'
+      let errorMessage = 'Erro ao atualizar perfil';
       if (error.response && error.response.data && error.response.data.message) {
-        errorMessage = error.response.data.message
+        errorMessage = error.response.data.message;
       }
       
       showMessage({
@@ -119,15 +126,15 @@ export default function Profile({ navigation }) {
         type: 'danger',
         duration: 3000,
         floating: true
-      })
+      });
     } finally {
-      setIsSaving(false)
+      setIsSaving(false);
     }
   }
 
   if (loading) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center',backgroundColor:"white" }}>
         <Image source={require('../assets/spinner.gif')} style={{ width: 100, height: 100 }} />
       </View>
     )
