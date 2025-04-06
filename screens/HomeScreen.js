@@ -12,6 +12,7 @@ import {
 import { BlurView } from "expo-blur";
 import { Image } from "expo-image";
 import { StatusBar } from "expo-status-bar";
+import { useIsFocused } from '@react-navigation/native';
 import {
   PermissionModal,
   PermissionItem
@@ -20,7 +21,7 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { TextInput } from "react-native";
 import { Formik } from "formik";
 import axios from "axios";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect,useCallback } from "react";
 import { Picker } from "@react-native-picker/picker";
 import DropDownPicker from "react-native-dropdown-picker";
 
@@ -84,47 +85,46 @@ const EntrySchema = Yup.object().shape({
       </View>
     );
   };
-  useEffect(() => {
-    const month = format(new Date(), "MMMM", { locale: ptBR });
-    setCurrentMonth(month.charAt(0).toUpperCase() + month.slice(1));
-
-    const fetchUserData = async () => {
-      try {
-        const storedUserId = await AsyncStorage.getItem("userId");
-        const storedUserName = await AsyncStorage.getItem("userName");
-
-        if (storedUserId !== null && storedUserName !== null) {
-          setUserId(storedUserId);
-          setUserName(storedUserName);
-        }
-      } catch (error) {
-        console.error("Erro ao buscar dados do usuário:", error);
+  // Hook para verificar se a tela está em foco
+  const isFocused = useIsFocused();
+  
+  // Função para buscar dados do usuário
+  const fetchUserData = useCallback(async () => {
+    try {
+      const storedUserId = await AsyncStorage.getItem("userId");
+      const storedUserName = await AsyncStorage.getItem("userName");
+      
+      if (storedUserId !== null && storedUserName !== null) {
+        setUserId(storedUserId);
+        setUserName(storedUserName);
       }
-    };
-
-    const fetchCategories = async () => {
-      try {
-        const response = await axios.get(`${API_UEL}/categories`);
-        const formattedItems = response.data.map((category) => ({
-          label: category.name,
-          value: category.id
-        }));
-        setItems(formattedItems);
-        setSelectedCategory(formattedItems[0]?.value || null); // Seleciona a primeira categoria por padrão
-      } catch (error) {
-        console.error("Erro ao buscar categorias:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchSummary();
-    fetchTransactions();
-    fetchUserData();
-    fetchCategories();
+      console.log("Nome do usuário atualizado:", storedUserName);
+    } catch (error) {
+      console.error("Erro ao buscar dados do usuário:", error);
+    }
   }, []);
-
-  const fetchSummary = async () => {
+  
+  // Função para buscar categorias
+  const fetchCategories = useCallback(async () => {
+    try {
+      const response = await axios.get(`${API_UEL}/categories`);
+      const formattedItems = response.data.map((category) => ({
+        label: category.name,
+        value: category.id
+      }));
+      setItems(formattedItems);
+      setSelectedCategory(formattedItems[0]?.value || null); // Seleciona a primeira categoria por padrão
+    } catch (error) {
+      console.error("Erro ao buscar categorias:", error);
+    } finally {
+      setLoading(false);
+    }
+  }, [API_UEL]);
+  
+  // Função para buscar resumo financeiro
+  const fetchSummary = useCallback(async () => {
+    // Implementação da função fetchSummary
+    // ...
     const userId = await AsyncStorage.getItem("userId");
     try {
       const response = await axios.get(`${API_UEL}/monthly-summary`, {
@@ -135,7 +135,49 @@ const EntrySchema = Yup.object().shape({
     } catch (error) {
       console.error("Erro ao buscar resumo mensal:", error);
     }
-  };
+  }, [userId, API_UEL]);
+  
+  // Função para buscar transações
+  const fetchTransactions = useCallback(async () => {
+    // Implementação da função fetchTransactions
+    // ...
+    try {
+      const userId = await AsyncStorage.getItem("userId");
+      const response = await axios.get(`${API_UEL}/transacoes`, {
+        params: {
+          user_id: userId
+        }
+      });
+      setTransactions(response.data);
+    } catch (error) {
+      console.error("Erro ao buscar transações:", error);
+    }
+  }, [userId, API_UEL]);
+  
+  // useEffect para definir o mês atual
+  useEffect(() => {
+    const month = format(new Date(), "MMMM", { locale: ptBR });
+    setCurrentMonth(month.charAt(0).toUpperCase() + month.slice(1));
+  }, []);
+  
+  // useEffect para carregar dados iniciais
+  useEffect(() => {
+    setLoading(true);
+    fetchCategories();
+  }, [fetchCategories]);
+  
+  // useEffect para recarregar dados quando a tela ganhar foco
+  useEffect(() => {
+    if (isFocused) {
+      fetchUserData();
+      fetchSummary();
+      fetchTransactions();
+    }
+  }, [isFocused, fetchUserData, fetchSummary, fetchTransactions]);
+
+  // const fetchSummary = async () => {
+  
+  // };
 
   const submitForm = async (values, { resetForm }) => {
     try {
@@ -235,19 +277,9 @@ const EntrySchema = Yup.object().shape({
     }
   };
 
-  const fetchTransactions = async () => {
-    try {
-      const userId = await AsyncStorage.getItem("userId");
-      const response = await axios.get(`${API_UEL}/transacoes`, {
-        params: {
-          user_id: userId
-        }
-      });
-      setTransactions(response.data);
-    } catch (error) {
-      console.error("Erro ao buscar transações:", error);
-    }
-  };
+  // const fetchTransactions = async () => {
+
+  // };
 
   const formatCurrency = (value) => {
     return new Intl.NumberFormat("pt-MZ", {
@@ -258,7 +290,7 @@ const EntrySchema = Yup.object().shape({
 
   if (loading) {
     return (
-      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center",backgroundColor:"white" }}>
         {/* <ActivityIndicator size='large' color='#0000ff' /> */}
         <Image
           source={require("../assets/spinner.gif")}
@@ -867,35 +899,31 @@ const EntrySchema = Yup.object().shape({
                 {errors.expenseValue}
               </Text>
             )}
-
-            <Dropdown
-              style={styles.dropdown}
-              placeholderStyle={styles.placeholderStyle}
-              selectedTextStyle={styles.selectedTextStyle}
-              inputSearchStyle={styles.inputSearchStyle}
-              iconStyle={styles.iconStyle}
-              data={items}
-              // nado
-              search
-              maxHeight={300}
-              labelField="label"
-              valueField="value"
-              placeholder="Selecione a Categoria"
-              searchPlaceholder="Pesquisar categoria"
-              value={value}
-              onChange={(item) => {
-                setValue(item.value);
-              }}
-              renderLeftIcon={() => (
-                <AntDesign
-                  style={styles.icon}
-                  color="black"
-                  name="Safety"
-                  size={20}
-                />
-              )}
-              renderItem={renderItem}
-            />
+    <Dropdown
+      style={styles.dropdown}
+      placeholderStyle={styles.placeholderStyle}
+      selectedTextStyle={styles.selectedTextStyle}
+      inputSearchStyle={styles.inputSearchStyle}
+      iconStyle={styles.iconStyle}
+      data={items}
+      search
+      maxHeight={350}
+      containerStyle={styles.dropdownContainer}
+      labelField="label"
+      valueField="value"
+      placeholder="Categoria"
+      searchPlaceholder="Pesquisar categoria"
+      value={value}
+      onChange={(item) => {
+        setValue(item.value);
+      }}
+      renderLeftIcon={() => (
+        <View style={styles.iconContainer}>
+          <AntDesign name="appstore1" size={18} color="#007BFF" />
+        </View>
+      )}
+      renderItem={renderItem}
+    />
 
 <TouchableOpacity
             style={{
@@ -947,57 +975,82 @@ const EntrySchema = Yup.object().shape({
 
 const styles = StyleSheet.create({
   dropdown: {
-    marginTop: 10,
     height: 50,
     backgroundColor: "white",
     borderRadius: 12,
-    padding: 12,
+    paddingHorizontal: 15,
+    paddingVertical: 8,
+    borderColor: "#E5E7EB",
+    borderWidth: 1,
+    marginVertical: 10,
+  },
+  dropdownContainer: {
+    backgroundColor: "white",
+    borderRadius: 12,
+    borderWidth: 0,
     shadowColor: "#000",
-    borderColor: "#8c97b5",
-    shadowOffset: {
-      width: 0,
-      height: 0
-    },
-    shadowOpacity: 0.2,
-    shadowRadius: 1.41,
-    borderColor: "#8c97b5",
-    borderWidth: 0.6,
-    overflow: "hidden"
-
-    // elevation: 2
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 2,
+    paddingVertical: 5,
+  },
+  iconContainer: {
+    backgroundColor: "#EBF5FF",
+    padding: 6,
+    borderRadius: 8,
+    marginRight: 10,
   },
   icon: {
-    marginRight: 5
+    marginRight: 5,
   },
   item: {
-    padding: 17,
+    paddingVertical: 12,
+    paddingHorizontal: 15,
     flexDirection: "row",
-    justifyContent: "space-between",
-    borderRadius: 12,
     alignItems: "center",
-    borderRadius: 28,
-    overflow: "hidden"
+    borderBottomWidth: 0.5,
+    borderBottomColor: "#F3F4F6",
+  },
+  itemIndicator: {
+    width: 4,
+    height: 20,
+    backgroundColor: "transparent",
+    borderRadius: 2,
+    marginRight: 12,
+  },
+  activeItemIndicator: {
+    backgroundColor: "#007BFF",
   },
   textItem: {
-    flex: 1,
-    borderRadius: 12,
-    fontSize: 16
+    fontSize: 15,
+    color: "#374151",
+    fontWeight: "400",
+  },
+  activeTextItem: {
+    color: "#007BFF",
+    fontWeight: "500",
   },
   placeholderStyle: {
-    borderRadius: 12,
-    fontSize: 16
+    fontSize: 15,
+    color: "#9CA3AF",
   },
   selectedTextStyle: {
-    borderRadius: 12,
-    fontSize: 16
+    fontSize: 15,
+    color: "#1F2937",
+    fontWeight: "500",
   },
   iconStyle: {
     width: 20,
-    height: 20
+    height: 20,
   },
   inputSearchStyle: {
-    height: 40,
-    borderRadius: 12,
-    fontSize: 16
-  }
+    height: 45,
+    borderRadius: 8,
+    fontSize: 15,
+    paddingHorizontal: 10,
+    borderColor: "#E5E7EB",
+    borderWidth: 1,
+    backgroundColor: "#F9FAFB"
+  },
 });
