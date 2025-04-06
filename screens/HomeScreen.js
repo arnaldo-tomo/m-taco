@@ -48,6 +48,11 @@ export default function HomeScreen({ navigation }) {
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [items, setItems] = useState([]);
   const [value, setValue] = useState(null);
+
+
+
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   const validationSchema = Yup.object().shape({
     expenseValue: Yup.number()
       .required("O valor do gasto é obrigatório")
@@ -55,6 +60,15 @@ export default function HomeScreen({ navigation }) {
       .typeError("Digite um valor válido")
   });
 
+  // Esquema de validação
+const EntrySchema = Yup.object().shape({
+  valor: Yup.string()
+    .required('O valor é obrigatório')
+    .matches(/^\d+(\.\d+)?$/, 'Valor deve ser um número válido'),
+  origim: Yup.string()
+    .required('A origem do valor é obrigatória')
+    .min(3, 'A origem deve ter pelo menos 3 caracteres'),
+});
   const renderItem = (item) => {
     return (
       <View style={styles.item}>
@@ -122,8 +136,11 @@ export default function HomeScreen({ navigation }) {
       console.error("Erro ao buscar resumo mensal:", error);
     }
   };
+
   const submitForm = async (values, { resetForm }) => {
     try {
+      setIsSubmitting(true);
+      
       // Obter o user_id do AsyncStorage
       const userId = await AsyncStorage.getItem("userId");
 
@@ -137,6 +154,7 @@ export default function HomeScreen({ navigation }) {
       // Atualizar a lista de transações
       fetchSummary();
       fetchTransactions();
+      
       // Definir mensagem de sucesso
       setSuccessMessage("Entrada registrada com sucesso!");
       showMessage({
@@ -146,14 +164,26 @@ export default function HomeScreen({ navigation }) {
         animationDuration: 300,
         floating: true
       });
+      
       // Limpar o formulário
       resetForm();
       this.permModal.closeModal();
-      // Opcional: remover a mensagem de sucesso após alguns segundos
+      
+      // Remover a mensagem de sucesso após alguns segundos
       setTimeout(() => setSuccessMessage(""), 3000);
     } catch (error) {
       console.error("Erro ao registrar entrada:", error);
-      // Tratar o erro, como mostrar uma mensagem ao usuário
+      // Exibir mensagem de erro
+      showMessage({
+        message: "Erro ao registrar entrada!",
+        description: error.response?.data?.message || "Tente novamente mais tarde",
+        type: "danger",
+        animated: true,
+        duration: 3000,
+        floating: true
+      });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -168,6 +198,7 @@ export default function HomeScreen({ navigation }) {
 
   const handleExpenseSubmit = async (values, { resetForm }) => {
     try {
+      setIsSubmitting(true);
       const userId = await AsyncStorage.getItem("userId");
 
       const payload = {
@@ -199,6 +230,8 @@ export default function HomeScreen({ navigation }) {
     } catch (error) {
       console.error("Erro ao registrar gasto:", error);
       // Tratar o erro, como mostrar uma mensagem ao usuário
+    }finally{
+      setIsSubmitting(false);
     }
   };
 
@@ -248,7 +281,7 @@ export default function HomeScreen({ navigation }) {
       <StatusBar style="light" />
       <ImageBackground
         source={require("../assets/bg.png")}
-        style={{ flex: 1, paddingTop: 35 }}
+        style={{ flex: 1, paddingTop: 35, }}
       >
         {/* Header com nome do usuário e botões */}
         <View
@@ -266,7 +299,7 @@ export default function HomeScreen({ navigation }) {
               style={{ height: 30, width: 30, tintColor: "white" }}
             />
             <View>
-              <Text style={{ paddingHorizontal: 5, color: "white" }}>
+              <Text style={{ paddingHorizontal: 5, color: "white",fontWeight:'600' }}>
                 {userName}
               </Text>
               <Text
@@ -274,7 +307,7 @@ export default function HomeScreen({ navigation }) {
                   fontSize: 10,
                   paddingHorizontal: 5,
                   color: "white",
-                  marginTop: -5
+                  marginTop: -2
                 }}
               >
                 {currentMonth}
@@ -528,7 +561,8 @@ export default function HomeScreen({ navigation }) {
               padding: 10,
               borderRadius: 16,
               overflow: "hidden",
-              marginHorizontal: 13
+              marginHorizontal: 13,
+              // marginBottom: 10
             }}
           >
             <View
@@ -571,8 +605,11 @@ export default function HomeScreen({ navigation }) {
           style={{
             paddingTop: 10,
             paddingHorizontal: 16,
+            // paddingVertical: 16,
             borderRadius: 26,
-            overflow: "hidden"
+            overflow: "hidden",
+            // marginBottom: 100
+        
           }}
         >
           {transactions.map((transaction) => (
@@ -588,7 +625,8 @@ export default function HomeScreen({ navigation }) {
                   padding: 10,
                   borderRadius: 16,
                   overflow: "hidden",
-                  marginTop: 5
+                  // marginTop: 5,
+                  marginBottom: 10
                 }}
               >
                 <View
@@ -638,63 +676,74 @@ export default function HomeScreen({ navigation }) {
         </ScrollView>
       </ImageBackground>
 
-      <Formik initialValues={{ valor: "", origim: "" }} onSubmit={submitForm}>
-        {({ handleChange, handleSubmit, values }) => (
-          <PermissionModal
-            title="Adicionar Nova Entrada"
-            subtitle='Não se esqueça de honrar ao Senhor com o dízimo. "Honra ao Senhor com os teus bens." - Provérbios 3:9'
-            panGestureEnabled={true}
-            closeOnOverlayTap={true}
-            ref={(ref) => (this.permModal = ref)}
+      <Formik 
+      initialValues={{ valor: "", origim: "" }} 
+      validationSchema={EntrySchema}
+      onSubmit={submitForm}
+    >
+      {({ handleChange, handleSubmit, values, errors, touched }) => (
+        <PermissionModal
+          title="Adicionar Nova Entrada"
+          subtitle='Não se esqueça de honrar ao Senhor com o dízimo. "Honra ao Senhor com os teus bens." - Provérbios 3:9'
+          panGestureEnabled={true}
+          closeOnOverlayTap={true}
+          ref={(ref) => (this.permModal = ref)}
+        >
+          <View
+            style={{
+              flexDirection: "column",
+              marginBottom: 10
+            }}
           >
-            <View
+            <TextInput
               style={{
-                flexDirection: "row",
-                justifyContent: "space-between",
-                alignItems: "center"
+                borderColor: errors.origim && touched.origim ? "#ff3b30" : "#8c97b5",
+                borderWidth: 0.5,
+                width: "100%",
+                padding: 10,
+                borderRadius: 10
               }}
-            >
-              <TextInput
-                style={{
-                  borderColor: "#8c97b5",
-                  borderWidth: 0.5,
-                  width: "100%",
-                  padding: 10,
-                  borderRadius: 10
-                }}
-                onChangeText={handleChange("origim")}
-                value={values.origim}
-                placeholder="Origem do valor"
-                keyboardType="default"
-              />
-            </View>
-            <View
-              style={{
-                flexDirection: "row",
-                justifyContent: "space-between",
-                alignItems: "center",
-                marginTop: 10
-              }}
-            >
+              onChangeText={handleChange("origim")}
+              value={values.origim}
+              placeholder="Origem do valor"
+              keyboardType="default"
+            />
+            {errors.origim && touched.origim && (
+              <Text style={{ color: '#ff3b30', fontSize: 12, marginTop: 5 }}>
+                {errors.origim}
+              </Text>
+            )}
+          </View>
+          
+          <View
+            style={{
+              flexDirection: "column",
+              marginBottom: 10
+            }}
+          >
+            <View style={{ flexDirection: "row" }}>
               <Image
                 source={require("../assets/up.png")}
                 style={{
                   height: 30,
                   width: 30,
                   tintColor: "#299318",
-                  borderColor: "#8c97b5",
+                  borderColor: errors.valor && touched.valor ? "#ff3b30" : "#8c97b5",
                   borderWidth: 0.5,
                   padding: 24,
-                  borderRadius: 10
+                  borderTopLeftRadius: 10,
+                  borderBottomLeftRadius: 10,
+                  borderRightWidth: 0
                 }}
               />
               <TextInput
                 style={{
-                  borderColor: "#8c97b5",
+                  borderColor: errors.valor && touched.valor ? "#ff3b30" : "#8c97b5",
                   borderWidth: 0.5,
                   width: "84%",
                   padding: 10,
-                  borderRadius: 10
+                  borderTopRightRadius: 10,
+                  borderBottomRightRadius: 10,
                 }}
                 onChangeText={handleChange("valor")}
                 value={values.valor}
@@ -702,38 +751,59 @@ export default function HomeScreen({ navigation }) {
                 keyboardType="numeric"
               />
             </View>
-            <TouchableOpacity
-              style={{
-                backgroundColor: "rgba(30, 29, 37, 6)",
-                borderWidth: 0.5,
-                borderRadius: 10,
-                marginTop: 10,
-                borderColor: "#8c97b5"
-              }}
-              onPress={handleSubmit}
-            >
+            {errors.valor && touched.valor && (
+              <Text style={{ color: '#ff3b30', fontSize: 12, marginTop: 5 }}>
+                {errors.valor}
+              </Text>
+            )}
+          </View>
+          
+          <TouchableOpacity
+            style={{
+              backgroundColor: "#007BFF",
+              borderWidth: 0.5,
+              borderRadius: 10,
+              marginTop: 10,
+              borderColor: "#8c97b5",
+              opacity: isSubmitting ? 0.7 : 1
+            }}
+            onPress={handleSubmit}
+            disabled={isSubmitting}
+          >
+            <View style={{ 
+              flexDirection: 'row', 
+              justifyContent: 'center',
+              alignItems: 'center',
+              padding: 10
+            }}>
+              {isSubmitting ? (
+                <ActivityIndicator size="small" color="#ffffff" style={{ marginRight: 10 }} />
+              ) : null}
               <Text
                 style={{
                   color: "white",
                   fontSize: 18,
-                  padding: 10,
                   textAlign: "center"
                 }}
               >
-                Salvar
+                {isSubmitting ? "Salvando..." : "Salvar"}
               </Text>
-            </TouchableOpacity>
-            {/* Mostrar mensagem de sucesso */}
-            {successMessage ? (
-              <Text
-                style={{ color: "green", marginTop: 10, textAlign: "center" }}
-              >
-                {successMessage}
-              </Text>
-            ) : null}
-          </PermissionModal>
-        )}
-      </Formik>
+            </View>
+          </TouchableOpacity>
+          
+          {/* Mostrar mensagem de sucesso */}
+          {successMessage ? (
+            <Text
+              style={{ color: "green", marginTop: 10, textAlign: "center" }}
+            >
+              {successMessage}
+            </Text>
+          ) : null}
+        </PermissionModal>
+      )}
+    </Formik>
+
+
       <Formik
         initialValues={{ expenseValue: "" }}
         onSubmit={handleExpenseSubmit}
@@ -827,35 +897,38 @@ export default function HomeScreen({ navigation }) {
               renderItem={renderItem}
             />
 
-            <TouchableOpacity
-              style={{
-                backgroundColor: "rgba(30, 29, 37, 6)",
-                borderWidth: 0.5,
-                borderRadius: 10,
-                marginTop: 20,
-                borderColor: "#8c97b5",
-                shadowColor: "#000",
-                shadowOffset: {
-                  width: 0,
-                  height: 5
-                },
-                shadowOpacity: 0.2,
-                shadowRadius: 1.41,
-                elevation: 2
-              }}
-              onPress={submitExpenseForm}
-            >
+<TouchableOpacity
+            style={{
+              backgroundColor: "#007BFF",
+              borderWidth: 0.5,
+              borderRadius: 10,
+              marginTop: 10,
+              borderColor: "#8c97b5",
+              opacity: isSubmitting ? 0.7 : 1
+            }}
+            onPress={submitExpenseForm}
+            disabled={isSubmitting}
+          >
+            <View style={{ 
+              flexDirection: 'row', 
+              justifyContent: 'center',
+              alignItems: 'center',
+              padding: 10
+            }}>
+              {isSubmitting ? (
+                <ActivityIndicator size="small" color="#ffffff" style={{ marginRight: 10 }} />
+              ) : null}
               <Text
                 style={{
                   color: "white",
                   fontSize: 18,
-                  padding: 12,
                   textAlign: "center"
                 }}
               >
-                Salvar
+                {isSubmitting ? "Salvando..." : "Salvar"}
               </Text>
-            </TouchableOpacity>
+            </View>
+          </TouchableOpacity>
 
             {/* Mostrar mensagem de sucesso */}
             {successMessage ? (
